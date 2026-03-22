@@ -1,0 +1,14 @@
+2026-03-22T14:30:00.000Z ##[group]Run npm test
+2026-03-22T14:30:00.100Z npm test
+2026-03-22T14:30:00.200Z ##[endgroup]
+2026-03-22T14:30:01.000Z > myapp@1.0.0 test
+2026-03-22T14:30:01.100Z > vitest run
+2026-03-22T14:30:02.000Z
+2026-03-22T14:30:02.100Z  FAIL  src/utils.test.ts > should format date correctly
+2026-03-22T14:30:02.200Z     TypeError: Cannot read properties of undefined (reading 'toISOString')
+2026-03-22T14:30:02.300Z       at formatDate (src/utils.ts:15:20)
+2026-03-22T14:30:02.400Z       at Object.<anonymous> (src/utils.test.ts:8:12)
+2026-03-22T14:30:03.000Z
+2026-03-22T14:30:03.100Z  Test Files  1 failed
+2026-03-22T14:30:03.200Z  Tests  1 failed
+2026-03-22T14:30:03.300Z ##[error]Process completed with exit code 1.

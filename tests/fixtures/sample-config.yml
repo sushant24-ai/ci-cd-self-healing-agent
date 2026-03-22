@@ -1,0 +1,25 @@
+repos:
+  - owner: acme
+    repo: webapp
+    reviewers:
+      - alice
+      - bob
+    defaultBranch: main
+
+llm:
+  provider: claude
+  model: claude-sonnet-4-20250514
+  apiKey: test-key-123
+
+teams:
+  webhookUrl: https://outlook.office.com/webhook/test
+  enabled: true
+
+safety:
+  maxFilesChanged: 5
+  maxLineDelta: 200
+  blockedPaths:
+    - ".env*"
+    - "secrets*"
+    - "*.lock"
+  requireReviewers: true

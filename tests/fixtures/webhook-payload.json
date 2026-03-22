@@ -1,0 +1,21 @@
+{
+  "action": "completed",
+  "workflow_run": {
+    "id": 12345,
+    "name": "Build and Test",
+    "html_url": "https://github.com/acme/webapp/actions/runs/12345",
+    "head_branch": "main",
+    "head_sha": "abc123def456",
+    "conclusion": "failure",
+    "run_started_at": "2026-03-22T14:00:00Z",
+    "triggering_actor": {
+      "login": "developer"
+    }
+  },
+  "repository": {
+    "owner": {
+      "login": "acme"
+    },
+    "name": "webapp"
+  }
+}

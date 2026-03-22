@@ -1,0 +1,72 @@
+name: CI/CD Self-Healing Agent
+
+on:
+  repository_dispatch:
+    types: [workflow_failure]
+  workflow_dispatch:
+    inputs:
+      owner:
+        description: "Repository owner"
+        required: true
+      repo:
+        description: "Repository name"
+        required: true
+      run_id:
+        description: "Failed workflow run ID"
+        required: true
+
+concurrency:
+  group: heal-${{ github.event.client_payload.repository.full_name || format('{0}/{1}', github.event.inputs.owner, github.event.inputs.repo) }}-${{ github.event.client_payload.workflow_run.id || github.event.inputs.run_id }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: read
+
+jobs:
+  heal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout self-healing agent
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prepare event payload (workflow_dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          cat > /tmp/event.json << 'PAYLOAD'
+          {
+            "repository": {
+              "owner": { "login": "${{ github.event.inputs.owner }}" },
+              "name": "${{ github.event.inputs.repo }}"
+            },
+            "workflow_run": {
+              "id": ${{ github.event.inputs.run_id }}
+            }
+          }
+          PAYLOAD
+        env:
+          GITHUB_EVENT_PATH: /tmp/event.json
+
+      - name: Run self-healing agent
+        run: npx tsx src/index.ts
+        env:
+          GITHUB_TOKEN: ${{ secrets.HEAL_GITHUB_TOKEN }}
+          APP_ID: ${{ secrets.APP_ID }}
+          APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
+          INSTALLATION_ID: ${{ secrets.INSTALLATION_ID }}
+          CONFIG_PATH: config.yml
+          GITHUB_EVENT_PATH: ${{ github.event_name == 'workflow_dispatch' && '/tmp/event.json' || github.event_path }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

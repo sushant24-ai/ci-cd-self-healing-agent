@@ -1,0 +1,32 @@
+# CI/CD Self-Healing Agent Configuration
+# Environment variables can be referenced as ${VAR_NAME}
+
+repos:
+  - owner: your-org
+    repo: your-repo
+    reviewers:
+      - reviewer1
+      - reviewer2
+    defaultBranch: main
+
+llm:
+  provider: claude
+  model: claude-sonnet-4-20250514
+  apiKey: ${ANTHROPIC_API_KEY}
+  maxTokens: 4096
+
+teams:
+  webhookUrl: ${TEAMS_WEBHOOK_URL}
+  enabled: true
+
+safety:
+  maxFilesChanged: 5
+  maxLineDelta: 200
+  blockedPaths:
+    - ".env*"
+    - "secrets*"
+    - "*.lock"
+    - "package-lock.json"
+    - "yarn.lock"
+    - "pnpm-lock.yaml"
+  requireReviewers: true

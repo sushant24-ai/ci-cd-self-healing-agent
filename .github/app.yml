@@ -1,0 +1,18 @@
+# GitHub App Manifest
+# Use this as a reference when creating your GitHub App
+# See: https://docs.github.com/en/apps/sharing-github-apps/registering-a-github-app-from-a-manifest
+
+name: CI/CD Self-Healing Agent
+description: Automatically detects CI failures, analyzes logs, and creates fix PRs
+url: https://github.com/your-org/ci-cd-self-healing-agent
+public: false
+
+default_permissions:
+  actions: read
+  checks: read
+  contents: write
+  pull_requests: write
+  metadata: read
+
+default_events:
+  - workflow_run
