@@ -13,7 +13,8 @@ import {
   buildCodeFixCard,
   buildNonCodeCard,
 } from './notifications/teams.js';
-import type { WorkflowFailureEvent, IncidentRecord } from './types.js';
+import { parseEvent, buildIncident } from './pipeline.js';
+import type { IncidentRecord } from './types.js';
 
 async function main() {
   const configPath = process.env.CONFIG_PATH ?? 'config.yml';
@@ -75,8 +76,6 @@ async function main() {
   console.log(`Classification: ${analysis.classification} (confidence: ${analysis.confidence})`);
 
   const baseBranch = repoConfig.defaultBranch ?? 'main';
-  let incidentStatus: IncidentRecord['status'] = 'manual-action-required';
-  let resolution = analysis.suggestedAction;
 
   // ── 7. Act on classification ────────────────────────────────
   if (analysis.classification === 'code') {
@@ -118,11 +117,10 @@ async function main() {
       );
 
       console.log(`PR created: ${pr.prUrl}`);
-      incidentStatus = 'auto-fixed';
-      resolution = `Auto-fix PR #${pr.prNumber}: ${pr.prUrl}`;
+      const resolution = `Auto-fix PR #${pr.prNumber}: ${pr.prUrl}`;
 
       // Write incident to PR branch
-      const incident = buildIncident(event, analysis, incidentStatus, resolution, pastIncidents);
+      const incident = buildIncident(event, analysis, 'auto-fixed', resolution, pastIncidents);
       await writeIncident(octokit, event.owner, event.repo, pr.branch, incident);
 
       // Notify Teams
@@ -146,8 +144,8 @@ async function main() {
 async function handleNonCode(
   octokit: ReturnType<typeof createGitHubClient>,
   config: ReturnType<typeof loadConfig>,
-  event: WorkflowFailureEvent,
-  analysis: ReturnType<typeof classifyFailure> extends Promise<infer T> ? T : never,
+  event: ReturnType<typeof parseEvent>,
+  analysis: Awaited<ReturnType<typeof classifyFailure>>,
   baseBranch: string,
   pastIncidents: IncidentRecord[],
 ) {
@@ -178,61 +176,6 @@ async function handleNonCode(
     await sendTeamsNotification(config.teams.webhookUrl, card);
     console.log('Teams notification sent (non-code).');
   }
-}
-
-function buildIncident(
-  event: WorkflowFailureEvent,
-  analysis: { errorSummary: string; rootCause: string; classification: 'code' | 'non-code' },
-  status: IncidentRecord['status'],
-  resolution: string,
-  pastIncidents: IncidentRecord[],
-): IncidentRecord {
-  // Find related past incidents (same workflow or similar error)
-  const related = pastIncidents
-    .filter(
-      (p) =>
-        p.workflow === event.workflowName ||
-        p.errorSummary.toLowerCase().includes(analysis.errorSummary.slice(0, 20).toLowerCase()),
-    )
-    .slice(0, 3)
-    .map((p) => `[${p.date}] ${p.workflow} run #${p.runId}: ${p.errorSummary}`);
-
-  return {
-    date: new Date().toISOString(),
-    repository: `${event.owner}/${event.repo}`,
-    workflow: event.workflowName,
-    runId: event.runId,
-    runUrl: event.runUrl,
-    classification: analysis.classification,
-    status,
-    errorSummary: analysis.errorSummary,
-    rootCause: analysis.rootCause,
-    resolution,
-    relatedPastIncidents: related,
-  };
-}
-
-function parseEvent(raw: Record<string, unknown>): WorkflowFailureEvent {
-  // Support both repository_dispatch (client_payload) and workflow_dispatch (inputs)
-  const payload = (raw.client_payload as Record<string, unknown>) ?? raw;
-  const workflowRun = (payload.workflow_run ?? payload) as Record<string, unknown>;
-  const repository = (payload.repository ?? raw.repository) as Record<string, unknown>;
-  const repoOwner = repository?.owner as Record<string, unknown>;
-
-  return {
-    owner: (repoOwner?.login as string) ?? (payload.owner as string) ?? '',
-    repo: (repository?.name as string) ?? (payload.repo as string) ?? '',
-    runId: (workflowRun.id as number) ?? (payload.run_id as number) ?? 0,
-    runUrl:
-      (workflowRun.html_url as string) ??
-      `https://github.com/${repoOwner?.login}/${repository?.name}/actions/runs/${workflowRun.id}`,
-    workflowName: (workflowRun.name as string) ?? 'Unknown',
-    branch: (workflowRun.head_branch as string) ?? 'main',
-    commitSha: (workflowRun.head_sha as string) ?? '',
-    triggeredBy:
-      ((workflowRun.triggering_actor as Record<string, unknown>)?.login as string) ?? 'unknown',
-    failedAt: (workflowRun.run_started_at as string) ?? new Date().toISOString(),
-  };
 }
 
 main().catch((err) => {
