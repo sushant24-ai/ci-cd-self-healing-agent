@@ -79,14 +79,18 @@ export async function createFixPR(
     base: baseBranch,
   });
 
-  // 7. Request reviewers
+  // 7. Request reviewers (non-fatal — don't fail the PR if reviewers can't be assigned)
   if (reviewers.length > 0) {
-    await octokit.pulls.requestReviewers({
-      owner,
-      repo,
-      pull_number: pr.number,
-      reviewers,
-    });
+    try {
+      await octokit.pulls.requestReviewers({
+        owner,
+        repo,
+        pull_number: pr.number,
+        reviewers,
+      });
+    } catch (err) {
+      console.warn(`Could not request reviewers: ${(err as Error).message}`);
+    }
   }
 
   return {
